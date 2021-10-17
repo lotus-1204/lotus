@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=L-xBSH6eyh9KB-7PnI9k4AhHoXTDLIDzup892u6C3I-EpfjkRNGPo2TSYMbErprfp70UIliWt0WtpWVE10YmgOdSLMVcL3dhwiNgtzesGgozn_QB5SpqdJjHDGQJruHDlBPZ2VICVGfOkd__s4Sdzf9twpZOXUikimaWNZQwXP99zFoJnN7hoBxvTlHCHzv2-UsxHGn2cxRNBMl_yZnSOG-49cAPnO_VIOaduT2CtOjNVzaEtgr7X9UhgxVjxLbJGzSe7loCfrNM13wcZacCRrHNdwS5L9aUM4Tfxa-SxM8Fg-PMtb3tiICp6r5QgaP9Vg2ft_eyKa2NkZiuW-y5WQ" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://ff.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly9kb2MtMGctYzgtZG9jcy5nb29nbGV1c2VyY29udGVudC5jb20vZG9jcy9zZWN1cmVzYy9sOWdtNzQ5ZTFhcG1jamJ2MTBvYnVraXIzMDZoaDg4Yi9rb3VuM29oaDI3azdrNTBnZHZyN3M4NmRpM3Q1Y20xcy8xNjMyMTg5Mzc1MDAwLzA5NzYxMTE2ODQ2NDYwNzM0MjQ3LzA1OTc5OTg0ODQ0MzEzOTk5ODIwLzFOcjBtUTBaZUFRTVZkdkZlOXU3SHJuRFdmdlI0OEhZbT9lPWRvd25sb2FkJmF1dGh1c2VyPTE"/><script>
+
+</script>
+</head>
+<body>
+    <div class = "omikuji">
+        <h1>おみくじ</h1>
+        <p class = "txt-content">おみくじルーレットへ</p>
+        <p class = txt-content>ようこそ</p>
+        <h2 id="zorome" class = "zorome"></h2>
+        <div class="button-container">
+            <div class = "button-wrapper">
+                <button class = "button_omikuji" onclick="start(0, 3)">おみくじを引く</button>
+                <button class = "button_stop" onclick="stop(0)">stop</button>
+                <p id = "0" class="result"></p>
+                <h2 id ="3" class="commnet"></h2>
+            </div>
+            <div class = "button-wrapper">
+                <button class = "button_omikuji" onclick="start(1, 4)">おみくじを引く</button>
+                <button class = "button_stop" onclick="stop(1)">stop</button>
+                <p id = "1" class="result"></p>
+                <h2 id ="4" class="commnet"></h2>
+            </div>
+            <div class = "button-wrapper">
+                <button class = "button_omikuji" onclick="start(2, 5)">おみくじを引く</button>
+                <button class = "button_stop" onclick="stop(2)">stop</button>
+                <p id = "2" class="result"></p>
+                <h2 id ="5" class="commnet"></h2>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    var intervalId = [0, 0, 0];
+    var conclusion = [1, 2, 3];
+    function start(result, msg){
+        document.getElementById('zorome').textContent = "";
+        if(!(intervalId[result])){
+            intervalId[result] = setInterval(function() {
+                let luck = Math.floor(Math.random() * 7);
+                conclusion[result] = luck;
+                switch(luck) {
+                    case 0: luck = "大吉"; comment = "油断せずいこう"; break;
+                    case 1: luck = "吉";  comment = "やるじゃん";break;
+                    case 2: luck = "中吉";  comment = "微妙だよな、微妙だよ"; break;
+                    case 3: luck = "小吉";  comment = "まだまだだね"; break;
+                    case 4: luck = "末吉";  comment = "どんまい"; break;
+                    case 5: luck = "凶";  comment = "真実はいつもひとつ"; break;
+                    case 6: luck = "大凶";  comment = ".....。"; break;
+                }
+                document.getElementById(result).textContent = luck;
+                document.getElementById(msg).textContent = comment;
+            }, 100);
+        }           
+    }
+
+    function stop(id){
+        if(intervalId) {
+            clearInterval(intervalId[id]);
+            intervalId[id] = 0;
+        }
+        if(conclusion[0] === conclusion[1] && conclusion[1] === conclusion[2]) {
+            document.getElementById("zorome").textContent = "あ、ぞろ目"
+        }
+    }
+</script>
+<style type="text/css">
+    .omikuji{
+        text-align: center;
+    }
+    h1{
+        color:blue;
+        font-size:100px;
+    }
+    button{
+        display:inline-block;
+        margin:0 auto;
+        background-color: aqua;
+    }
+    .result{
+        color:red;
+        font-size: 100px;
+    }
+    .txt-content{
+        font-size: 50px;
+    }
+    .button-wrapper{
+        float:left;
+        width:33.3%;
+    }
+</style>
+</html>
