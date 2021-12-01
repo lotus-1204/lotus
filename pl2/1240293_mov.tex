@@ -1,0 +1,375 @@
+\documentclass[a4j]{jarticle}
+%\usepackage{comment}
+\usepackage{float}
+\usepackage[dvipdfmx]{graphicx}
+\usepackage{listings, jlisting}
+\lstset{
+  basicstyle={\ttfamily},
+  identifierstyle={\small},
+  commentstyle={\smallitshape},
+  keywordstyle={\small\bfseries},
+  ndkeywordstyle={\small},
+  stringstyle={\small\ttfamily},
+  frame={tb},
+  breaklines=true,
+  columns=[l]{fullflexible},
+  numbers=left,
+  xrightmargin=0zw,
+  xleftmargin=3zw,
+  numberstyle={\scriptsize},
+  stepnumber=1,
+  numbersep=1zw,
+  lineskip=-0.5ex
+}
+
+
+\title{情報学群実験第2 \\ ARMプロセッサのmov命令での即値のロード範囲の規則}
+
+\author{学籍番号： 1240293 \\ 氏名：植田　蓮\\E-mail: 240293p@ugs.kochi-tech.ac.jp}
+
+\date{\today}
+\renewcommand{\lstlistingname}{実行例}
+\begin{document}
+
+\maketitle
+\section{実験の目的}
+本実験課題では，ARMプロセッサ用のアセンブリ言語(以下アセンブリ言語)を用いる。
+アセンブリ言語では、mov命令をによってある範囲の即値を読み込むことができる。
+しかし、mov命令によって、256はロードできるが、257はロードすることができずアセンブルエラーとなる。
+また、65280はロードすることができるが、65379や65281同じくアセンブルエラーとなる。
+これらから、mov命令でロードできる範囲の規則は単純ではないことが予測される。\\
+\indent 本実験課題のの目的は、ARMプロセッサのmov命令でロードできる値の範囲を表す規則を明らかにすることである。
+
+
+
+\section{方法}
+
+\subsection{実行環境}
+実験を行った環境を表1に示す
+  \begin{table}[h]
+    \centering
+    \caption{実行環境}
+    \begin{tabular}{|c|c|}
+      \hline
+      OS & Ubuntu 18.04.5 LTS 64bit \\ \hline
+      shell & bash 4.4.20(1)-release (x86\_64-pc-linux-gnu) \\ \hline
+    \end{tabular}
+  \end{table}
+  
+  \subsection{設計・実装}
+本課題では，ソートアルゴリズムとして，最も単純な，バブルソートを実装した．
+ソースコードは付録Aに示す．
+
+\subsubsection{外部仕様}
+プログラムはサブルーチンとして定義されている．
+指定された主記憶領域中のダブルワード(４byte)の列を昇順に整列し，
+整列対象の先頭番地はEBXレジスタに保存されている．
+また，ダブルワード列に含まれるダブルワードの個数はECXレジスタに保存されており，
+30万個以下とする．
+整列対象のダブルワード列に含まれる数の定義域は，0以上$2^{31}$未満とし，
+サブルーチンの実行前と実行後で，汎用レジスタの値が変わらないようにする．
+上記の条件を満たしていないデータ列の入力は想定しておらず、その場合のエラー処理等は特に行わない。
+
+\subsubsection{内部仕様}
+実行前後で，レジスタの値が変わらないようにするために，サブルーチンの最初で
+各汎用レジスタの値をpushを用いて，スタックに保存し，
+最後にpushとは逆順にpopを行うことで，実行前後でのレジスタの値を保存している．\\
+\indent ESIレジスタには，ダブルワード列の先頭の番地を保存しており，
+EAXレジスタは，探索を行う末尾の番地を表している．\\
+\indent loop0では，未ソートのダブルワード列の末尾の番地であるEAXレジスタを
+４ずつ減算することで更新し，更新した値を先頭番地と比較することで，繰り返し処理の判定を行っている．\\
+\indent loop1では，注目要素と，その4番地後ろの要素を比較し，
+注目要素が，後ろの要素よりも大きいなら，その2つの要素に関して，
+swap処理を行う．その後，注目要素の番地を4バイト後ろにずらし，
+その番地と，未ソートの比較番地を保存したEAXレジスタと比較し，
+同値なら，loop1を終了し，loop0に戻る．同値でないなら，
+再度，loop1を実行する．
+
+\subsection{テスト}
+サブルーチンが正常に動作しているかの確認のために，以下のデータを用いてテストを行った．
+\begin{itemize}
+\item 300個の乱数の列の整列
+\item 0,1,2,....,300の整列済みのデータ
+\item 300,299,298,.....,1,0の逆順に整列されたデータ
+\item 境界値である，0と2147483647を含むデータ
+\end{itemize}
+
+\subsection{Javaとの比較}
+高級言語で記述されたコードと，アセンブリ言語で記述されたコードの
+比較を行うために，本課題では，Javaで記述されたコードとの比較を行う．
+Javaを用いてバブルソートを実装したプログラムを付録2に示す．
+アセンブリ及びJavaで記述されたコードはどちらも，
+バブルソートのアルゴリズムを実装しているが，
+コードの量や，複雑さについて，比較を行う．
+
+\subsection{実行時間計測}
+今回実装した，バブルソートは一般に入力サイズ$N$に対して，$O(N^{2})$になることが知られているが，
+アセンブリ言語で実装されたプログラムでも同じことが成り立つことを確認するために
+$N$個の入力に対して，実行ファイルをmakeコマンドを用いてテストプログラム実行しその実行時間を計測した．
+計測にはbashのtimeコマンドを用いて時間を計測した．
+その際の比較に利用したのは，ユーザーCPU時間(user)である．
+以下に実行例を示す．
+また，Makefileおよびテスト実行 プログラムを付録3に示す．
+
+\begin{lstlisting}[caption=timeコマンド実行例]
+  240293p@KUT20VLIN-338:~/pl2/git/q1-i386-pl2-2021-groupa/chap9$ time make test
+nasm -felf test_sort.s
+ld -m elf_i386 sort.o print_eax.o test_sort.o -o test_sort
+./test_sort
+1
+5
+
+real	0m0.096s
+user	0m0.009s
+sys	0m0.005s
+
+\end{lstlisting}
+
+\section{結果}
+\subsection{テスト結果}
+2.3節で示した，テストを行った結果，すべてのテストにおいて
+ソートプログラムはデータ列を正常にソートしていた．
+
+\subsection{高級言語とのコードの比較}
+ソースコード1とソースコード2を比較すると，Javaで記述されたものより
+アセンブリで記述されたもののほうが明らかにコードの量が増加している．
+複雑さについては，コード量の増加要因との関係を含めて，4節に示す．
+
+
+\subsection{アセンブリで記述されたプログラムの時間計算量}
+2.5節に示した，実行時間計測結果を表\ref{table2}および
+図\ref{fig1}に示す．どちらの図表も，実行時間の単位はミリ秒であることに注意されたい．
+これを見ると，アセンブリ言語で実装された
+バブルソートは入力サイズが4000以上になると$O(N^{2})$に従っていることが
+確認できる．
+
+\begin{table}{H}
+  \centering
+  \caption{入力サイズと実行時間}
+  \label{table2}
+  \begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \hline
+    input size & 10 & 100 & 1000 & 2000 & 4000 & 8000 & 10000& 14000 \\
+    \hline
+    run time(ms) & 4 & 6 & 8 & 10 & 22 & 101 & 170 & 365  \\
+    \hline
+    \hline
+     input size & 20000 & 28000 & 40000 & 56000 & 80000 & 112000 & 160000& 300000\\
+     \hline
+     run time(ms) & 773 & 1573 & 3281 & 6486 & 13452 & 26674 & 52921 & 190635 \\
+     \hline
+  \end{tabular}
+\end{table}
+
+\section{考察}
+\subsection{アセンブリ言語での整列アルゴリズム実装可能性}
+3.1節で示したように，複数のテストデータを用いて，整列プログラムのテスト
+を行った結果，すべてのテストにおいて正確に整列が実行されていることが確認された．
+このことから，アセンブリ言語によって，整列アルゴリズムを記述することが
+可能であると考えられる．また，アセンブリ言語は原則として，機械語に対して，
+1対1の命令セットを持っていることから，機械語による直接の記述が可能であることも
+同時に言える．
+
+
+
+
+
+\subsection{高級言語とのソースコード比較}
+実験の結果として，Javaによる記述と比べると，アセンブリ言語による記述の方が
+コード量が多くなっていることが確認された．アセンブリ言語では，命令を記述している行が
+36行に及んだのに対して，Javaでは，classや配列の宣言を含めて，14行で記述されている．
+このような結果になる理由として，アセンブリ言語では，代入や比較などを
+命令として1行ずつ記述する必要があるためだと考えられる．例えば，Javaで以下のように書くとき
+\begin{lstlisting}[caption=Javaでの繰り返し文]
+  for(int i = array.length - 1; i > 0; i--) {
+    .....
+    }
+\end{lstlisting}
+アセンブリでは，以下のように記述しなければならない．ここでは，配列の長さが既知とする．arrayLengthは配列の長さである．
+\begin{lstlisting}[caption=アセンブリでの繰り返し文]
+      sub arrayLength, 1    
+      mov ebx, arrayLength
+  loopn0:
+      cmp ebx, 0
+      je  end
+      ....
+      dec ebx
+      jmp loop0
+
+   end
+\end{lstlisting}
+\indent for文を実現するためにはJavaでは1行で記述することができるものを
+アセンブリでは，約6行の記述が必要になる．バブルソートは　
+2重ループを用いるアルゴリズムのため，比較は最低でももう一度行うので，
+コード量が増加することは容易に想像できる．\\
+\indent また，アセンブリ言語のプログラムでは，サブルーチン実行前後で，レジスタの値が変化
+しないようにする必要があった．そのためのスタックへのpushが6回ある．サブルーチン終了時には
+同じ回数popするため，レジスタの値を保存するために，合計12回の命令が必要である．
+このことも，アセンブリ言語で記述すると，コード量が増加した原因であると考えられる．\\
+ \indent 以上のことを踏まえると，繰り返し及び比較を行うと，コード量が増え，サブルーチンでは，
+レジスタの値保持のためにコードが増えるため，一般にアセンブリ言語で記述すると，
+高級言語で，記述した場合よりも，コード量が増えると考えられる．\\
+\indent
+ コードの複雑さについては何をもって複雑になっているのかという定義にも依存するが，
+私は，Javaとアセンブリによるバブルソートのソースコードを比較したときにはコードの複雑さは変わっていないと考える．
+理由は，アセンブリとJavaにおける違いは，文法だけであるからだ．
+前述したようにたしかに，Javaでのfor文をアセンブリで実行しようとすると，
+コードの量は増加すると考えられる．
+しかし，どちらのプログラムも，実行される命令をトレースしていけばその内容は
+ほとんど一致している．
+むしろ，高級言語で記述されている文を1命令ずつトレースすると，アセンブリ言語に
+一致すると言ってもいい．つまり，両者の違いは文法であり本質的には，何も変わらないのである．
+そのことは，Javaで実現可能なソートプログラムをアセンブリで実現できたことが証明している．\\
+\indent もちろん高級言語では，グローバルとローカル変数，変数名による違いといったふうに
+自由に変数を定義できるのに対して，アセンブリ言語では，限られたレジスタと主記憶領域を用いて，
+記述しなければいけないので，swap処理の際に代入の回数が増えたり，主記憶領域との
+値のやり取りが増えたりはするもの，そこについても，使える変数や，メモリへのアクセスが増えるだけで，
+本質的にはswapを行っているだけなので，コードが複雑になったとは考えるべきではない．\\ 
+\indent  しかし、今回の実験では、ソースコードの比較を行っただけであるので、
+実行時間については、どちらがより実行時間が短いかは不明である。
+
+\subsection{アセンブリ言語によるバブルソートの時間計算量}
+バブルソートの理論計算量は入力サイズ$N$に対して$O(N^{2})$であるが，実験結果から，
+アセンブリ言語で実装した際にも$O(N^{2})$に従うと考えられる．今回の実験では，
+入力サイズが2000までは$O(N^{2})$　となっていないが．一般に理論計算量は
+入力サイズが十分に大きい，つまり，$n\rightarrow\infty$
+のときの漸近的な値を示しているので，今回は，入力サイズが4000以上に注目したときに概ね
+$O(N^{2})$となっているので，理論計算量に従っていると考えられる． 
+
+
+\newpage
+\appendix
+\renewcommand{\lstlistingname}{ソースコード}
+\setcounter{lstlisting}{0}
+\section{付録1}
+
+\begin{lstlisting}[caption=sort.s]  
+  section .text
+  global sort
+  sort:
+  ;; ebx先頭番地が保存されている
+  ;; ecxに個数が保存されている
+  push eax
+  push ebx
+  push ecx
+  push edx
+  push esi
+  push edi
+  
+  mov eax, 4		;eax=4
+  mov edx, 0
+  mul ecx			;eax=4*個数
+  mov edx, 0
+  add eax, ebx		;配列の末尾の番地+4
+  sub eax, 4		
+  mov esi, ebx		;先頭番地を保存しておく
+  
+  loop0:
+  sub eax, nbyte		;配列の未ソートの末尾の番地
+  cmp eax, esi		;未ソートの末尾と先頭番地を比較
+  jl end			;小さいなら終了
+  
+  loop1:
+  mov edi, [ebx]
+  cmp edi, [ebx + 4]	;前後の数を比べる
+  jle  add4		;(配列風に書くと)[n] < [n+1] なら　注目要素を次の要素にする
+  
+  swap:				;[ebx]と[ebx+4]をswap
+  mov edi, [ebx]
+  mov [tmp], edi
+  mov edi, [ebx + 4]
+  mov [ebx], edi
+  mov edi, [tmp]
+  mov [ebx + 4], edi
+
+
+  add4:	
+  add ebx, 4		; 比較する番地を１要素ずらす
+  cmp ebx, eax		; 未ソートの末尾番地と比較する番地を比較
+  jle loop1		; イコールならloop1を脱出
+  mov ebx, esi		; 配列の先頭から比較し直す
+  jmp loop0		; loop0に戻る
+  
+  end:
+  pop edi
+  pop esi			
+  pop edx
+  pop ecx
+  pop ebx
+  pop eax
+  ret
+  
+  section .data
+  tmp:	dd 0
+\end{lstlisting}
+
+\section{付録2}
+\begin{lstlisting}[caption=srot.java]
+  public class BubbleSort {
+    public static void main(String[] args) {
+      int array[] = {0, 100, 88, 77, 66, 55, 44, 33, 22}; // ソートされるデータ列
+      for(int i = array.length - 1; i > 0; i--) { // 未ソートの配列の末尾をデクリメントしていく
+	for(int j = 0; j < i; j++) { // 先頭から未ソートの末尾までをソートしていく
+	  if(array[j] > array[j+1]) { // 注目要素より1つ後ろの要素のほうが大きいならスワップ
+	    int tmp = array[j];
+	    array[j] = array[j+1];
+	    array[j+1] = tmp;
+	  }
+	}
+      }
+    }
+  }
+\end{lstlisting}
+
+\section{付録2}
+\begin{lstlisting}[caption=Makefile]
+  # マクロ定義
+AS = nasm -felf
+Ld = ld
+LDFLAGS = -m elf_i386
+OBJS_SORT = sort.o print_eax.o test_sort.o
+
+# .oの生成
+%.o:%.s
+	$(AS) $<
+
+# test_sort デフォルトターゲット
+test_sort: $(OBJS_SORT)
+	$(LD) $(LDFLAGS) $+ -o $@
+
+# 疑似ターゲット
+.PHONY:clean test
+# 不要ファイルの削除
+clean:
+	rm -f *.o *~ a.out test_sort
+
+# テストでの実行
+test: $(OBJS_SORT)
+	$(LD) $(LDFLAGS) $+ -o test_sort
+./test_sort
+\end{lstlisting}
+
+\begin{lstlisting}[caption=test\_sort.s]
+  
+        section .text
+        global  _start
+        extern  sort, print_eax
+_start:
+        mov     ebx, data1      ; データの先頭番地
+        mov     ecx, ndata1     ; ダブルワードの個数
+        call    sort            ; 昇順に整列
+
+        mov     eax, [data1]    ; 先頭=最小値
+        call    print_eax
+        mov     eax, [data1 + 4 * (ndata1 - 1)]  ; 末尾=最大値
+        call    print_eax
+
+        mov     eax, 1
+        mov     ebx, 0
+        int     0x80            ; exit
+
+        section .data
+data1:  dd 5, 4, 3, 2, 1
+ndata1: equ     ($ - data1)/4    ; ダブルワードの個数(=バイト数/4)
+\end{lstlisting}
+\end{document}
